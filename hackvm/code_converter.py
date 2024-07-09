@@ -24,6 +24,9 @@ class CodeConverter:
 
     def convert_all(self) -> list[str]:
         result: list[str] = []
+        label_id: int = 0
         for inst in self.instructions:
-            result.extend(inst.convert())
+            converted = inst.convert(label_id)
+            result.extend(converted[0])
+            label_id = converted[1]
         return result
