@@ -37,6 +37,12 @@ class InstructionParser:
                     f'@{5 + num}',
                     'D=M'
                 ]
+            elif seg == 'static':
+                # TODO: VMファイル名を含める
+                asm = [
+                    f'@Test.{num}',
+                    'D=M'
+                ]
             else:
                 raise SyntaxError(f'unknown segment: {seg}')
 
@@ -70,6 +76,12 @@ class InstructionParser:
             elif seg == 'temp':
                 asm = [
                     f'@{5 + num}',
+                    'D=A'
+                ]
+            elif seg == 'static':
+                # TODO: VMファイル名を含める
+                asm = [
+                    f'@Test.{num}',
                     'D=A'
                 ]
             else:
