@@ -103,24 +103,20 @@ class InstructionParser:
             exp = {'add': 'D+M', 'sub': 'M-D', 'and': 'D&M', 'or': 'D|M'}
             return ([
                 '@SP',
-                'A=M-1',
+                'AM=M-1',
                 'D=M',
                 'A=A-1',
                 f'M={exp[opcode]}',
-                '@SP',
-                'M=M-1'
             ], label_id)
         elif opcode in ('eq', 'gt', 'lt'):
             jmp_opcode = f'J{opcode.upper()}'
             return ([
                 '@SP',
-                'A=M-1',
+                'AM=M-1',
                 'D=M',
                 'A=A-1',
                 'D=M-D',
                 'M=-1',
-                '@SP',
-                'M=M-1',
                 f'@continue{label_id}',
                 f'D;{jmp_opcode}',
                 '@SP',
