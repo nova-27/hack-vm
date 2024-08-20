@@ -38,15 +38,14 @@ class InstructionParser:
                 'A=A-1',
                 'D=M-D',
                 'M=-1',
+                '@SP',
+                'M=M-1',
                 f'@continue{label_id}',
                 f'D;{jmp_opcode}',
                 '@SP',
                 'A=M-1',
-                'A=A-1',
                 'M=0',
                 f'(continue{label_id})',
-                '@SP',
-                'M=M-1',
             ], label_id + 1)
         elif opcode in ('neg', 'not'):
             return ([
