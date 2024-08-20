@@ -27,6 +27,11 @@ class InstructionParser:
                     'A=D+M',
                     'D=M'
                 ]
+            elif seg == 'pointer':
+                asm = [
+                    f'@{3 + num}',
+                    'D=M'
+                ]
             elif seg == 'temp':
                 asm = [
                     f'@{5 + num}',
@@ -56,6 +61,11 @@ class InstructionParser:
                     'D=A',
                     f'@{SYMBOLS[seg]}',
                     'D=D+M'
+                ]
+            elif seg == 'pointer':
+                asm = [
+                    f'@{3 + num}',
+                    'D=A'
                 ]
             elif seg == 'temp':
                 asm = [
