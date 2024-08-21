@@ -69,10 +69,7 @@ class InstructionConverter:
         elif opcode == 'label':
             label = self.sp_inst[1]
 
-            return [
-                # TODO: スコープを関数内に限る
-                f'(Label.{label})'
-            ]
+            return [f'({state.func_name}${label})']
         elif opcode == 'if-goto':
             label = self.sp_inst[1]
 
@@ -80,14 +77,14 @@ class InstructionConverter:
                 '@SP',
                 'AM=M-1',
                 'D=M',
-                f'@Label.{label}',
+                f'@{state.func_name}${label}',
                 'D;JNE'
             ]
         elif opcode == 'goto':
             label = self.sp_inst[1]
 
             return [
-                f'@Label.{label}',
+                f'@{state.func_name}${label}',
                 '0;JMP'
             ]
         elif opcode == 'push':
