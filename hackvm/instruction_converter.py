@@ -4,81 +4,34 @@ SYMBOLS = OrderedDict((('that', 'THAT'), ('this', 'THIS'), ('argument', 'ARG'), 
 
 class ParseState:
     label_id = 0
-    func_name = "global"
+    func_name = 'global'
 
 
 class InstructionConverter:
     sp_inst: list[str]
+    state: ParseState
 
-    def __init__(self, instruction: str):
+    def __init__(self, instruction: str, state: ParseState):
         self.sp_inst = instruction.split()
+        self.state = state
 
-    def convert(self, state: ParseState) -> list[str]:
+    def convert(self) -> list[str]:
         opcode = self.sp_inst[0]
         if opcode == 'function':
             func_name = self.sp_inst[1]
             var_cnt = int(self.sp_inst[2])
-
-            asm = [f'({func_name})']
-            state.func_name = func_name
-
-            push0_asm = self._push('constant', 0)
-            for i in range(0, var_cnt):
-                asm.extend(push0_asm)
-
-            return asm
+            return self._function(func_name, var_cnt)
         elif opcode == 'return':
-            asm = []
-
-            asm.extend(self._pop('argument', 0))
-            asm.extend([
-                '@ARG',
-                'D=M+1',
-                '@R13',
-                'M=D',
-
-                '@LCL',
-                'D=M',
-                '@SP',
-                'M=D'
-            ])
-
-            for seg in SYMBOLS.values():
-                asm.extend(self._pop_d() + [
-                    f'@{seg}',
-                    'M=D'
-                ])
-
-            asm.extend(self._pop_d() + [
-                '@R14',
-                'M=D',
-
-                '@R13',
-                'D=M',
-                '@SP',
-                'M=D',
-
-                '@R14',
-                'A=M',
-                '0;JMP'
-            ])
-
-            return asm
+            return self._return()
         elif opcode == 'label':
             label = self.sp_inst[1]
-            return [f'({state.func_name}${label})']
+            return self._label(label)
         elif opcode == 'if-goto':
             label = self.sp_inst[1]
-            return self._pop_d() + [
-                f'@{state.func_name}${label}',
-                'D;JNE'
-            ]
+            return self._if_goto(label)
         elif opcode == 'goto':
             label = self.sp_inst[1]
-            return [
-                f'@{state.func_name}${label}',
-                '0;JMP'
-            ]
+            return self._goto(label)
         elif opcode == 'push':
             seg = self.sp_inst[1]
             num = int(self.sp_inst[2])
@@ -88,33 +41,77 @@ class InstructionConverter:
             num = int(self.sp_inst[2])
             return self._pop(seg, num)
         elif opcode in ('add', 'sub', 'and', 'or'):
-            exp = {'add': 'D+M', 'sub': 'M-D', 'and': 'D&M', 'or': 'D|M'}
-            return self._pop_d() + [
-                'A=A-1',
-                f'M={exp[opcode]}',
-            ]
+            return self._calc(opcode)
         elif opcode in ('eq', 'gt', 'lt'):
             jmp_opcode = f'J{opcode.upper()}'
-            state.label_id += 1
-            return self._pop_d() + [
-                'A=A-1',
-                'D=M-D',
-                'M=-1',
-                f'@{state.func_name}$COMP{state.label_id - 1}',
-                f'D;{jmp_opcode}',
-                '@SP',
-                'A=M-1',
-                'M=0',
-                f'({state.func_name}$COMP{state.label_id - 1})',
-            ]
+            return self._comp(jmp_opcode)
         elif opcode in ('neg', 'not'):
-            return [
-                '@SP',
-                'A=M-1',
-                'M=-M' if opcode == 'neg' else 'M=!M',
-            ]
+            return self._one_calc(opcode)
         else:
             raise SyntaxError(f'unknown instruction: {opcode}')
+
+    def _function(self, func_name: str, var_cnt: int):
+        asm = [f'({func_name})']
+        self.state.func_name = func_name
+
+        push0_asm = self._push('constant', 0)
+        for i in range(0, var_cnt):
+            asm.extend(push0_asm)
+
+        return asm
+
+    def _return(self):
+        asm = []
+
+        asm.extend(self._pop('argument', 0))
+        asm.extend([
+            '@ARG',
+            'D=M+1',
+            '@R13',
+            'M=D',
+
+            '@LCL',
+            'D=M',
+            '@SP',
+            'M=D'
+        ])
+
+        for seg in SYMBOLS.values():
+            asm.extend(self._pop_d() + [
+                f'@{seg}',
+                'M=D'
+            ])
+
+        asm.extend(self._pop_d() + [
+            '@R14',
+            'M=D',
+
+            '@R13',
+            'D=M',
+            '@SP',
+            'M=D',
+
+            '@R14',
+            'A=M',
+            '0;JMP'
+        ])
+
+        return asm
+
+    def _label(self, label: str):
+        return [f'({self.state.func_name}${label})']
+
+    def _if_goto(self, label: str):
+        return self._pop_d() + [
+            f'@{self.state.func_name}${label}',
+            'D;JNE'
+        ]
+
+    def _goto(self, label: str):
+        return [
+            f'@{self.state.func_name}${label}',
+            '0;JMP'
+        ]
 
     def _push(self, segment: str, index: int):
         asm: list[str]
@@ -209,3 +206,31 @@ class InstructionConverter:
         ])
 
         return asm
+
+    def _calc(self, opcode: str):
+        exp = {'add': 'D+M', 'sub': 'M-D', 'and': 'D&M', 'or': 'D|M'}
+        return self._pop_d() + [
+            'A=A-1',
+            f'M={exp[opcode]}',
+        ]
+
+    def _comp(self, jmp_opcode: str):
+        self.state.label_id += 1
+        return self._pop_d() + [
+            'A=A-1',
+            'D=M-D',
+            'M=-1',
+            f'@{self.state.func_name}$COMP{self.state.label_id - 1}',
+            f'D;{jmp_opcode}',
+            '@SP',
+            'A=M-1',
+            'M=0',
+            f'({self.state.func_name}$COMP{self.state.label_id - 1})',
+        ]
+
+    def _one_calc(self, opcode: str):
+        return [
+            '@SP',
+            'A=M-1',
+            'M=-M' if opcode == 'neg' else 'M=!M',
+        ]
