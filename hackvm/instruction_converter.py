@@ -1,38 +1,42 @@
 SYMBOLS = {'argument': 'ARG', 'local': 'LCL', 'this': 'THIS', 'that': 'THAT'}
 
 
-class InstructionParser:
+class ParseState:
+    label_id = 0
+
+
+class InstructionConverter:
     sp_inst: list[str]
 
     def __init__(self, instruction: str):
         self.sp_inst = instruction.split()
 
-    def convert(self, label_id: int) -> (list[str], int):
+    def convert(self, state: ParseState) -> list[str]:
         opcode = self.sp_inst[0]
         if opcode == 'label':
             label = self.sp_inst[1]
 
-            return ([
+            return [
                 # TODO: スコープを関数内に限る
                 f'(Label.{label})'
-            ], label_id)
+            ]
         elif opcode == 'if-goto':
             label = self.sp_inst[1]
 
-            return ([
+            return [
                 '@SP',
                 'AM=M-1',
                 'D=M',
                 f'@Label.{label}',
                 'D;JNE'
-            ], label_id)
+            ]
         elif opcode == 'goto':
             label = self.sp_inst[1]
 
-            return ([
+            return [
                 f'@Label.{label}',
                 '0;JMP'
-            ], label_id)
+            ]
         elif opcode == 'push':
             seg = self.sp_inst[1]
             num = int(self.sp_inst[2])
@@ -79,7 +83,7 @@ class InstructionParser:
                 'M=D'
             ])
 
-            return asm, label_id
+            return asm
         elif opcode == 'pop':
             seg = self.sp_inst[1]
             num = int(self.sp_inst[2])
@@ -122,37 +126,38 @@ class InstructionParser:
                 'M=D'
             ])
 
-            return asm, label_id
+            return asm
         elif opcode in ('add', 'sub', 'and', 'or'):
             exp = {'add': 'D+M', 'sub': 'M-D', 'and': 'D&M', 'or': 'D|M'}
-            return ([
+            return [
                 '@SP',
                 'AM=M-1',
                 'D=M',
                 'A=A-1',
                 f'M={exp[opcode]}',
-            ], label_id)
+            ]
         elif opcode in ('eq', 'gt', 'lt'):
             jmp_opcode = f'J{opcode.upper()}'
-            return ([
+            state.label_id += 1
+            return [
                 '@SP',
                 'AM=M-1',
                 'D=M',
                 'A=A-1',
                 'D=M-D',
                 'M=-1',
-                f'@continue{label_id}',
+                f'@continue{state.label_id - 1}',
                 f'D;{jmp_opcode}',
                 '@SP',
                 'A=M-1',
                 'M=0',
-                f'(continue{label_id})',
-            ], label_id + 1)
+                f'(continue{state.label_id - 1})',
+            ]
         elif opcode in ('neg', 'not'):
-            return ([
+            return [
                 '@SP',
                 'A=M-1',
                 'M=-M' if opcode == 'neg' else 'M=!M',
-            ], label_id)
+            ]
         else:
             raise SyntaxError(f'unknown instruction: {opcode}')

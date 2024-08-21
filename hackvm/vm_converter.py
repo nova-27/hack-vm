@@ -1,8 +1,8 @@
-from .instruction_parser import InstructionParser
+from .instruction_converter import InstructionConverter, ParseState
 
 
-class CodeConverter:
-    instructions: list[InstructionParser]
+class VMConverter:
+    instructions: list[InstructionConverter]
 
     def __init__(self, lines: list[str]):
         self.instructions = []
@@ -10,7 +10,7 @@ class CodeConverter:
             normalized_line = self._normalize_line(line)
             if not normalized_line:
                 continue
-            self.instructions.append(InstructionParser(normalized_line))
+            self.instructions.append(InstructionConverter(normalized_line))
 
     @staticmethod
     def _normalize_line(line: str) -> str:
@@ -23,10 +23,8 @@ class CodeConverter:
         return line.strip()
 
     def convert_all(self) -> list[str]:
-        result: list[str] = []
-        label_id: int = 0
+        result = []
+        state = ParseState()
         for inst in self.instructions:
-            converted = inst.convert(label_id)
-            result.extend(converted[0])
-            label_id = converted[1]
+            result.extend(inst.convert(state))
         return result

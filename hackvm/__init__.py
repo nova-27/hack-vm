@@ -1,1 +1,1 @@
-from .code_converter import CodeConverter
+from .vm_converter import VMConverter
