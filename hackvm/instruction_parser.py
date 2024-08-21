@@ -9,7 +9,31 @@ class InstructionParser:
 
     def convert(self, label_id: int) -> (list[str], int):
         opcode = self.sp_inst[0]
-        if opcode == 'push':
+        if opcode == 'label':
+            label = self.sp_inst[1]
+
+            return ([
+                # TODO: スコープを関数内に限る
+                f'(Label.{label})'
+            ], label_id)
+        elif opcode == 'if-goto':
+            label = self.sp_inst[1]
+
+            return ([
+                '@SP',
+                'AM=M-1',
+                'D=M',
+                f'@Label.{label}',
+                'D;JNE'
+            ], label_id)
+        elif opcode == 'goto':
+            label = self.sp_inst[1]
+
+            return ([
+                f'@Label.{label}',
+                '0;JMP'
+            ], label_id)
+        elif opcode == 'push':
             seg = self.sp_inst[1]
             num = int(self.sp_inst[2])
 
