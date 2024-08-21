@@ -3,6 +3,7 @@ SYMBOLS = {'argument': 'ARG', 'local': 'LCL', 'this': 'THIS', 'that': 'THAT'}
 
 class ParseState:
     label_id = 0
+    func_name = "global"
 
 
 class InstructionConverter:
@@ -13,7 +14,59 @@ class InstructionConverter:
 
     def convert(self, state: ParseState) -> list[str]:
         opcode = self.sp_inst[0]
-        if opcode == 'label':
+        if opcode == 'function':
+            func_name = self.sp_inst[1]
+            var_cnt = int(self.sp_inst[2])
+
+            asm = [f'({func_name})']
+            state.func_name = func_name
+
+            push0_asm = InstructionConverter('push constant 0').convert(state)
+            for i in range(0, var_cnt):
+                asm.extend(push0_asm)
+
+            return asm
+        elif opcode == 'return':
+            asm = []
+
+            asm.extend(InstructionConverter('pop argument 0').convert(state))
+            asm.extend([
+                '@LCL',
+                'D=M',
+                '@R13',
+                'M=D',
+                '@ARG',
+                'D=M+1',
+                '@SP',
+                'M=D',
+                '@R13',
+                'AM=M-1',
+                'D=M',
+                '@THAT',
+                'M=D',
+                '@R13',
+                'AM=M-1',
+                'D=M',
+                '@THIS',
+                'M=D',
+                '@R13',
+                'AM=M-1',
+                'D=M',
+                '@ARG',
+                'M=D',
+                '@R13',
+                'AM=M-1',
+                'D=M',
+                '@LCL',
+                'M=D',
+                '@R13',
+                'A=M-1',
+                'A=M',
+                '0;JMP'
+            ])
+
+            return asm
+        elif opcode == 'label':
             label = self.sp_inst[1]
 
             return [
