@@ -3,8 +3,22 @@ SYMBOLS = OrderedDict((('that', 'THAT'), ('this', 'THIS'), ('argument', 'ARG'), 
 
 
 class ParseState:
-    label_id = 0
-    func_name = 'global'
+    _func_name: str
+    _comp_id: int
+
+    def __init__(self):
+        self.reset('global')
+
+    def reset(self, func_name: str):
+        self._func_name = func_name
+        self._comp_id = 0
+
+    def get_func_name(self):
+        return self._func_name
+
+    def get_new_comp_label(self):
+        self._comp_id += 1
+        return f'$COMP{self._comp_id - 1}'
 
 
 class InstructionConverter:
@@ -52,7 +66,7 @@ class InstructionConverter:
 
     def _function(self, func_name: str, var_cnt: int):
         asm = [f'({func_name})']
-        self.state.func_name = func_name
+        self.state.reset(func_name)
 
         push0_asm = self._push('constant', 0)
         for i in range(0, var_cnt):
@@ -99,17 +113,17 @@ class InstructionConverter:
         return asm
 
     def _label(self, label: str):
-        return [f'({self.state.func_name}${label})']
+        return [f'({self.state.get_func_name()}${label})']
 
     def _if_goto(self, label: str):
         return self._pop_d() + [
-            f'@{self.state.func_name}${label}',
+            f'@{self.state.get_func_name()}${label}',
             'D;JNE'
         ]
 
     def _goto(self, label: str):
         return [
-            f'@{self.state.func_name}${label}',
+            f'@{self.state.get_func_name()}${label}',
             '0;JMP'
         ]
 
@@ -215,17 +229,18 @@ class InstructionConverter:
         ]
 
     def _comp(self, jmp_opcode: str):
-        self.state.label_id += 1
+        func_name = self.state.get_func_name()
+        label = self.state.get_new_comp_label()
         return self._pop_d() + [
             'A=A-1',
             'D=M-D',
             'M=-1',
-            f'@{self.state.func_name}$COMP{self.state.label_id - 1}',
+            f'@{func_name}${label}',
             f'D;{jmp_opcode}',
             '@SP',
             'A=M-1',
             'M=0',
-            f'({self.state.func_name}$COMP{self.state.label_id - 1})',
+            f'({func_name}${label})',
         ]
 
     def _one_calc(self, opcode: str):
