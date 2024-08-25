@@ -5,6 +5,7 @@ SYMBOLS = OrderedDict((('local', 'LCL'), ('argument', 'ARG'), ('this', 'THIS'), 
 class ParseState:
     _func_name: str
     _comp_id: int
+    _return_id: int
 
     def __init__(self):
         self.reset('global')
@@ -12,6 +13,7 @@ class ParseState:
     def reset(self, func_name: str):
         self._func_name = func_name
         self._comp_id = 0
+        self._return_id = 0
 
     def get_func_name(self):
         return self._func_name
@@ -19,6 +21,10 @@ class ParseState:
     def get_new_comp_label(self):
         self._comp_id += 1
         return f'$COMP{self._comp_id - 1}'
+
+    def get_new_return_label(self):
+        self._return_id += 1
+        return f'$RETURN{self._return_id - 1}'
 
 
 class InstructionConverter:
@@ -49,6 +55,10 @@ class InstructionConverter:
             return self._function(func_name, var_cnt)
         elif opcode == 'return':
             return self._return()
+        elif opcode == 'call':
+            func_name = self.sp_inst[1]
+            arg_cnt = int(self.sp_inst[2])
+            return self._call(func_name, arg_cnt)
         elif opcode == 'label':
             label = self.sp_inst[1]
             return self._label(label)
@@ -128,6 +138,48 @@ class InstructionConverter:
             '@R15',
             'A=M',
             '0;JMP'
+        ])
+
+        return asm
+
+    def _call(self, func_name: str, arg_cnt: int):
+        asm = [
+            '@SP',
+            'D=M'
+        ]
+
+        for i in range(0, arg_cnt):
+            asm.extend(['D=D-1'])
+
+        label = self.state.get_new_return_label()
+        asm.extend([
+            '@R13',
+            'M=D',
+
+            f'@{self.state.get_func_name()}${label}',
+            'D=A'
+        ] + self._push_d())
+
+        for seg in SYMBOLS.values():
+            asm.extend([
+                f'@{seg}',
+                'D=M',
+            ] + self._push_d())
+
+        asm.extend([
+            '@R13',
+            'D=M',
+            '@ARG',
+            'M=D',
+
+            '@SP',
+            'D=M',
+            '@LCL',
+            'M=D',
+
+            f'@{func_name}',
+            '0;JMP',
+            f'({self.state.get_func_name()}${label})'
         ])
 
         return asm
