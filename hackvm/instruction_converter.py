@@ -1,5 +1,5 @@
 from collections import OrderedDict
-SYMBOLS = OrderedDict((('that', 'THAT'), ('this', 'THIS'), ('argument', 'ARG'), ('local', 'LCL')))
+SYMBOLS = OrderedDict((('local', 'LCL'), ('argument', 'ARG'), ('this', 'THIS'), ('that', 'THAT')))
 
 
 class ParseState:
@@ -89,11 +89,14 @@ class InstructionConverter:
     def _return(self):
         asm = []
 
-        asm.extend(self._pop('argument', 0))
+        asm.extend(self._pop_d() + [
+            '@R13',
+            'M=D'
+        ])
         asm.extend([
             '@ARG',
-            'D=M+1',
-            '@R13',
+            'D=M',
+            '@R14',
             'M=D',
 
             '@LCL',
@@ -102,22 +105,27 @@ class InstructionConverter:
             'M=D'
         ])
 
-        for seg in SYMBOLS.values():
+        for seg in reversed(SYMBOLS.values()):
             asm.extend(self._pop_d() + [
                 f'@{seg}',
                 'M=D'
             ])
 
         asm.extend(self._pop_d() + [
-            '@R14',
+            '@R15',
             'M=D',
 
-            '@R13',
+            '@R14',
             'D=M',
             '@SP',
-            'M=D',
-
-            '@R14',
+            'M=D'
+        ])
+        asm.extend([
+            '@R13',
+            'D=M'
+        ] + self._push_d())
+        asm.extend([
+            '@R15',
             'A=M',
             '0;JMP'
         ])
@@ -137,6 +145,15 @@ class InstructionConverter:
         return [
             f'@{self.state.get_func_name()}${label}',
             '0;JMP'
+        ]
+
+    def _push_d(self):
+        return [
+            '@SP',
+            'A=M',
+            'M=D',
+            '@SP',
+            'M=M+1'
         ]
 
     def _push(self, segment: str, index: int):
@@ -175,13 +192,7 @@ class InstructionConverter:
         else:
             raise SyntaxError(f'unknown segment: {segment}')
 
-        asm.extend([
-            '@SP',
-            'A=M',
-            'M=D',
-            '@SP',
-            'M=M+1'
-        ])
+        asm.extend(self._push_d())
 
         return asm
 
