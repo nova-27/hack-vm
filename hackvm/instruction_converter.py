@@ -18,6 +18,9 @@ class ParseState:
     def get_func_name(self):
         return self._func_name
 
+    def get_file_name(self):
+        return self._func_name.split('.')[0]
+
     def get_new_comp_label(self):
         self._comp_id += 1
         return f'$COMP{self._comp_id - 1}'
@@ -236,9 +239,8 @@ class InstructionConverter:
                 'D=M'
             ]
         elif segment == 'static':
-            # TODO: VMファイル名を含める
             asm = [
-                f'@Test.{index}',
+                f'@{self.state.get_file_name()}.{index}',
                 'D=M'
             ]
         else:
@@ -277,9 +279,8 @@ class InstructionConverter:
                 'D=A'
             ]
         elif segment == 'static':
-            # TODO: VMファイル名を含める
             asm = [
-                f'@Test.{index}',
+                f'@{self.state.get_file_name()}.{index}',
                 'D=A'
             ]
         else:
