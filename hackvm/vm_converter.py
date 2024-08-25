@@ -25,7 +25,7 @@ class VMConverter:
         return line.strip()
 
     def convert_all(self) -> list[str]:
-        result = []
+        result = InstructionConverter.gen_bootstrap()
         for inst in self.instructions:
             result.extend(inst.convert())
         return result

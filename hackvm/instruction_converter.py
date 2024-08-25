@@ -29,6 +29,18 @@ class InstructionConverter:
         self.sp_inst = instruction.split()
         self.state = state
 
+    @staticmethod
+    def gen_bootstrap():
+        asm = [
+            '@256',
+            'D=A',
+            '@SP',
+            'M=D',
+        ]
+        asm.extend(InstructionConverter('call Sys.init 0', ParseState()).convert())
+
+        return asm
+
     def convert(self) -> list[str]:
         opcode = self.sp_inst[0]
         if opcode == 'function':
